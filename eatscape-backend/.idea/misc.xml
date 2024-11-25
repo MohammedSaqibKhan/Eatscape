@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/userservice/pom.xml" />
+        <option value="$PROJECT_DIR$/mealservice/pom.xml" />
+        <option value="$PROJECT_DIR$/../Downloads/mealservice/pom.xml" />
+        <option value="$PROJECT_DIR$/../Downloads/mealplanservice/pom.xml" />
+        <option value="$PROJECT_DIR$/mealplanservice/pom.xml" />
+        <option value="$PROJECT_DIR$/../Downloads/recipeservice/pom.xml" />
+        <option value="$PROJECT_DIR$/recipeservice/pom.xml" />
+        <option value="$PROJECT_DIR$/../Downloads/nutritionservice/pom.xml" />
+        <option value="$PROJECT_DIR$/nutritionservice/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_18" default="true" project-jdk-name="18" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>
