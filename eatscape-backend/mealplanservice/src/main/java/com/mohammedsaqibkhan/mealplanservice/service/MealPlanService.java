@@ -65,17 +65,17 @@ public class MealPlanService {
 //    }
 
 
-    public void deleteMealPlanEntriesByMealPlanId(Long mealPlanId) {
-        List<MealPlanEntry> entries = mealPlanEntryRepository.findByMealPlanId(mealPlanId);
-        if (entries.isEmpty()) {
-            throw new MealPlanNotFoundException("No meal plan entries found with mealPlanId: " + mealPlanId);
-        }
-        mealPlanEntryRepository.deleteAll(entries);
-    }
+//    public void deleteMealPlanEntriesByMealPlanId(Long mealPlanId) {
+//        List<MealPlanEntry> entries = mealPlanEntryRepository.findByMealPlanId(mealPlanId);
+//        if (entries.isEmpty()) {
+//            throw new MealPlanNotFoundException("No meal plan entries found with mealPlanId: " + mealPlanId);
+//        }
+//        mealPlanEntryRepository.deleteAll(entries);
+//    }
 
-    public List<MealPlanEntry> getMealPlanEntriesByMealPlanId(Long mealPlanId) {
-        return mealPlanEntryRepository.findByMealPlanId(mealPlanId);
-    }
+//    public List<MealPlanEntry> getMealPlanEntriesByMealPlanId(Long mealPlanId) {
+//        return mealPlanEntryRepository.findByMealPlanId(mealPlanId);
+//    }
 
 
 //    public MealPlan findOrCreateMealPlan(Long userId) {
@@ -90,14 +90,14 @@ public class MealPlanService {
 //                });
 //    }
 
-    public MealPlanEntry addMealToPlan(Long mealPlanId, Long mealId) {
-        MealPlanEntry entry = new MealPlanEntry();
-        entry.setMealPlanId(mealPlanId);
-        entry.setMealId(mealId);
-        entry.setMealType("Breakfast");
-        entry.setDate(LocalDate.now());
-        return mealPlanEntryRepository.save(entry);
-    }
+//    public MealPlanEntry addMealToPlan(Long mealPlanId, Long mealId) {
+//        MealPlanEntry entry = new MealPlanEntry();
+//        entry.setMealPlanId(mealPlanId);
+//        entry.setMealId(mealId);
+//        entry.setMealType("Breakfast");
+//        entry.setDate(LocalDate.now());
+//        return mealPlanEntryRepository.save(entry);
+//    }
 
 
     public List<MealPlan> getMealPlansByUser(Long userId) {
@@ -106,10 +106,10 @@ public class MealPlanService {
     }
 
 
-    public void deleteMealPlanById(Long mealPlanId) {
-        deleteMealPlanEntriesByMealPlanId(mealPlanId);
-        mealPlanRepository.deleteById(mealPlanId);
-    }
+//    public void deleteMealPlanById(Long mealPlanId) {
+//        deleteMealPlanEntriesByMealPlanId(mealPlanId);
+//        mealPlanRepository.deleteById(mealPlanId);
+//    }
 
     public List<MealPlanEntry> addMealsToPlan(String mealPlanName, List<MealPlanEntry> entries) {
         return null;

@@ -1,6 +1,7 @@
 package com.mohammedsaqibkhan.mealplanservice.controller;
 
 
+import com.mohammedsaqibkhan.mealplanservice.entity.MealPlanEntry;
 import com.mohammedsaqibkhan.mealplanservice.service.MealPlanEntryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,13 @@ public class MealPlanEntryController {
     public ResponseEntity<?> deleteMealPlanEntry(@PathVariable Long mealEntryId) {
         service.deleteMealPlanEntry(mealEntryId);
         return new ResponseEntity<>("Deleted successfully", HttpStatus.NO_CONTENT);
+    }
+
+
+    @PostMapping("/entry")
+    public ResponseEntity<?> addMealPlanEntry(@RequestBody MealPlanEntry mealPlanEntry) {
+        service.addMealPlanEntry(mealPlanEntry);
+        return new ResponseEntity<>("Added Successfully", HttpStatus.CREATED);
     }
 
 }

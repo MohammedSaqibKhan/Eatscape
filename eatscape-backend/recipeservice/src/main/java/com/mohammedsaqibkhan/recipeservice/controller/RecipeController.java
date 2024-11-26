@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @CrossOrigin(origins = "*")
@@ -32,6 +33,13 @@ public class RecipeController {
         List<Recipe> recipes = recipeService.getAllRecipes();
         return ResponseEntity.ok(recipes);
     }
+
+    @GetMapping("/dynamic-search")
+    public ResponseEntity<List<Recipe>> searchRecipes(@RequestParam String query) {
+        List<Recipe> recipes = recipeService.searchRecipesByName(query);
+        return ResponseEntity.ok(recipes);
+    }
+
 
     // Get recipe by ID
     @GetMapping("/{id}")
@@ -83,6 +91,12 @@ public class RecipeController {
 
         Optional<Recipe> recipe = recipeService.getRecipeByName(name);
         return new ResponseEntity<>(recipe.get(), HttpStatus.OK);
+    }
+
+
+    @GetMapping("/daily-random")
+    public Map<String, Recipe> getDailyRandomRecipes() {
+        return recipeService.getRandomRecipesForMeals();
     }
 
 }

@@ -28,4 +28,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     // Additional custom queries can be added here
 
     Optional<Recipe> findByName(String name);
+
+    List<Recipe> findByNameStartingWithIgnoreCase(String query);
+
+    List<Recipe> findByMealType_NameIgnoreCase(String mealType);
 }

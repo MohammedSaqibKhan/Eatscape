@@ -13,11 +13,13 @@ public class MealPlanEntryService {
     @Autowired
     private MealPlanEntryRepository mealPlanEntryRepository;
 
-    public List<MealPlanEntry> getMealPlanEntriesForMealPlan(Long mealPlanId) {
-        return mealPlanEntryRepository.findByMealPlanId(mealPlanId);
-    }
+
 
     public void deleteMealPlanEntry(Long mealEntryId) {
         mealPlanEntryRepository.deleteById(mealEntryId);
+    }
+
+    public void addMealPlanEntry(MealPlanEntry mealPlanEntry) {
+        mealPlanEntryRepository.save(mealPlanEntry);
     }
 }

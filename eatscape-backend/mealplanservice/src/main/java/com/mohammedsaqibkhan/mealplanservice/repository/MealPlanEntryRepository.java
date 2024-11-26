@@ -7,7 +7,5 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface MealPlanEntryRepository extends JpaRepository<MealPlanEntry, Long> {
-    List<MealPlanEntry> findByMealPlanId(Long mealPlanId);
 
-    void deleteAllByMealPlanId(Long mealPlanId);
 }

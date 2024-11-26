@@ -3,8 +3,7 @@ package com.mohammedsaqibkhan.recipeservice.service;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public interface RecipeService {
     Recipe createRecipe(RecipeDTO recipe);
@@ -25,4 +24,7 @@ public interface RecipeService {
 
     boolean markAsFavorite(Long id);
 
+    List<Recipe> searchRecipesByName(String query);
+
+    Map<String, Recipe> getRandomRecipesForMeals();
 }

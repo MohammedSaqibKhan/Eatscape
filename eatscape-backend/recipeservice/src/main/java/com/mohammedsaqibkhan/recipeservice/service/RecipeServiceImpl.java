@@ -13,8 +13,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
 import java.io.File;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -51,22 +52,19 @@ public class RecipeServiceImpl implements RecipeService {
 
         String imageUrl = recipeRequest.getImageUrl();
         if (imageUrl == null || imageUrl.isEmpty()) {
-            // Generate file name dynamically
             String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpg";
-
-            // Log dynamic file name
             System.out.println("Dynamic file name: " + dynamicFileName);
 
-            // Use Spring's ClassPathResource to load from the classpath (resources)
+            // Load the resource
             Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
 
-            // Check if the file exists
-            if (resource.exists()) {
+            try (InputStream inputStream = resource.getInputStream()) {
+                // File exists
                 imageUrl = "/images/recipes/" + dynamicFileName;
                 System.out.println("Image found: " + imageUrl);
-            } else {
+            } catch (IOException e) {
+                // File does not exist
                 System.out.println("Image not found locally. Proceeding to AI image generation...");
-
             }
         }
 
@@ -184,6 +182,27 @@ public class RecipeServiceImpl implements RecipeService {
         return true;
     }
 
+    @Override
+    public List<Recipe> searchRecipesByName(String query) {
+        return recipeRepository.findByNameStartingWithIgnoreCase(query);
+    }
+
+    @Override
+    public Map<String, Recipe> getRandomRecipesForMeals() {
+        // Define meal types
+        List<String> mealTypes = Arrays.asList("Breakfast", "Lunch", "Dinner");
+        Map<String, Recipe> randomRecipes = new HashMap<>();
+
+        Random random = new Random();
+        for (String mealType : mealTypes) {
+            List<Recipe> filteredRecipes = recipeRepository.findByMealType_NameIgnoreCase(mealType);
+            if (!filteredRecipes.isEmpty()) {
+                Recipe randomRecipe = filteredRecipes.get(random.nextInt(filteredRecipes.size()));
+                randomRecipes.put(mealType, randomRecipe);
+            }
+        }
+        return randomRecipes;
+    }
 
 
 }

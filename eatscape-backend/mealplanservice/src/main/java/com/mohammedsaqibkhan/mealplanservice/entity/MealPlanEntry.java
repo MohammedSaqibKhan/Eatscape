@@ -12,8 +12,8 @@ public class MealPlanEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long mealPlanId;
-    private Long mealId;
+    private String mealPlanName;
+    private String mealName;
     private LocalDate date;
     private String mealType; // e.g., breakfast, lunch, dinner
     // getters and setters
