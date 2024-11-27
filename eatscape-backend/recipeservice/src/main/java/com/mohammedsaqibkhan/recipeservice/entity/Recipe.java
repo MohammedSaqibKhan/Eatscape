@@ -7,6 +7,7 @@ import com.mohammedsaqibkhan.recipeservice.enums.DifficultyLevel;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -66,4 +67,39 @@ public class Recipe {
     private List<String> tags; // Tags like "Quick," "Kids-Friendly," etc.
 
     private String cuisine; // Cuisine type, e.g., Italian, Indian, etc.
+
+    // Rating fields
+    @ElementCollection
+    @JsonIgnore // Optional: Only expose averageRating in the response if needed
+    private List<Integer> ratings; // Individual ratings (e.g., from 1 to 5 stars)
+
+    private Double averageRating; // Calculated average rating
+
+    /**
+     * Add a new rating to the recipe and update the average rating.
+     *
+     * @param newRating the rating to add (e.g., 1-5)
+     */
+    public void addRating(int newRating) {
+        if (ratings == null) {
+            ratings = new ArrayList<>();
+        }
+        ratings.add(newRating);
+        updateAverageRating();
+    }
+
+
+    /**
+     * Calculate and update the average rating.
+     */
+    private void updateAverageRating() {
+        if (ratings == null || ratings.isEmpty()) {
+            this.averageRating = null;
+        } else {
+            this.averageRating = ratings.stream()
+                    .mapToInt(Integer::intValue)
+                    .average()
+                    .orElse(0.0);
+        }
+    }
 }
