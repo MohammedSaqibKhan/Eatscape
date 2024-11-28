@@ -3,6 +3,7 @@ package com.mohammedsaqibkhan.recipeservice.repository;
 import com.mohammedsaqibkhan.recipeservice.entity.DietType;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,7 +30,17 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     Optional<Recipe> findByName(String name);
 
-    List<Recipe> findByNameStartingWithIgnoreCase(String query);
+    List<Recipe> findByNameStartingWithIgnoreCaseAndIsDeletedFalse(String query);
 
-    List<Recipe> findByMealType_NameIgnoreCase(String mealType);
+    List<Recipe> findByMealType_NameIgnoreCaseAndIsDeletedFalse(String mealType);
+
+    // Count all recipes that are not marked as deleted
+    long countByIsDeletedFalse();
+
+    // Count recipes by diet type and ensure they are not marked as deleted
+    long countByDietTypeIdAndIsDeletedFalse(Long dietTypeId);
+
+    List<Recipe> findAllByIsDeletedFalse();
+
+    Optional<Recipe> findByIdAndIsDeletedFalse(Long id);
 }

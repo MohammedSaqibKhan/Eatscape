@@ -1,13 +1,17 @@
 package com.mohammedsaqibkhan.recipeservice.controller;
 
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
+import com.mohammedsaqibkhan.recipeservice.dto.RecipeStatsDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
+import com.mohammedsaqibkhan.recipeservice.exception.ResourceNotFoundException;
+import com.mohammedsaqibkhan.recipeservice.repository.RecipeRepository;
 import com.mohammedsaqibkhan.recipeservice.service.RecipeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +23,7 @@ import java.util.Optional;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final RecipeRepository recipeRepository;
 
     // Create a new recipe
     @PostMapping
@@ -27,11 +32,16 @@ public class RecipeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdRecipe);
     }
 
-    // Get all recipes
     @GetMapping
-    public ResponseEntity<List<Recipe>> getAllRecipes() {
-        List<Recipe> recipes = recipeService.getAllRecipes();
-        return ResponseEntity.ok(recipes);
+    public List<Recipe> getAllRecipes() {
+        return recipeRepository.findAllByIsDeletedFalse();
+    }
+
+    @GetMapping("/{id}")
+    public Recipe getRecipeById(@PathVariable Long id) {
+        Recipe recipe = recipeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found with ID: " + id));
+        return recipe;
     }
 
     @GetMapping("/dynamic-search")
@@ -41,25 +51,27 @@ public class RecipeController {
     }
 
 
-    // Get recipe by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<Recipe> getRecipeById(@PathVariable Long id) {
-        Recipe recipe = recipeService.getRecipeById(id);
-        return recipe != null ? ResponseEntity.ok(recipe) : ResponseEntity.notFound().build();
-    }
+
 
     // Update a recipe
     @PutMapping("/{id}")
-    public ResponseEntity<Recipe> updateRecipe(@PathVariable Long id, @RequestBody Recipe recipe) {
-        Recipe updatedRecipe = recipeService.updateRecipe(id, recipe);
-        return updatedRecipe != null ? ResponseEntity.ok(updatedRecipe) : ResponseEntity.notFound().build();
+    public Recipe updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
+        Recipe recipe = recipeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found with ID: " + id));
+        // Copy properties from updatedRecipe to recipe
+        recipe.setName(updatedRecipe.getName());
+        recipe.setDescription(updatedRecipe.getDescription());
+        // Update other fields as needed
+        return recipeRepository.save(recipe);
     }
 
-    // Delete a recipe
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRecipe(@PathVariable Long id) {
-        boolean deleted = recipeService.deleteRecipe(id);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    public ResponseEntity<?> deleteRecipe(@PathVariable Long id) {
+        Recipe recipe = recipeRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found with ID: " + id));
+        recipe.setDeleted(true);
+        recipeRepository.save(recipe);
+        return ResponseEntity.ok("Recipe marked as deleted.");
     }
 
     // Search recipes by name or tag
@@ -78,12 +90,12 @@ public class RecipeController {
         return ResponseEntity.ok(popularRecipes);
     }
 
-    // Mark a recipe as favorite
-    @PostMapping("/{id}/favorite")
-    public ResponseEntity<Void> markAsFavorite(@PathVariable Long id) {
-        boolean marked = recipeService.markAsFavorite(id);
-        return marked ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
-    }
+//    // Mark a recipe as favorite
+//    @PostMapping("/{id}/favorite")
+//    public ResponseEntity<Void> markAsFavorite(@PathVariable Long id) {
+//        boolean marked = recipeService.markAsFavorite(id);
+//        return marked ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+//    }
 
 
     @GetMapping("/name/{name}")
@@ -97,6 +109,67 @@ public class RecipeController {
     @GetMapping("/daily-random")
     public Map<String, Recipe> getDailyRandomRecipes() {
         return recipeService.getRandomRecipesForMeals();
+    }
+
+
+    @PostMapping("/{id}/rating")
+    public ResponseEntity<?> addRating(@PathVariable Long id, @RequestBody double rating) {
+        Recipe recipe = recipeService.findById(id);
+
+        if (recipe == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found");
+        }
+
+        recipe.addRating(rating);
+
+        recipeService.save(recipe); // Save the updated recipe
+
+        // Prepare response
+        Map<String, Object> response = new HashMap<>();
+        response.put("averageRating", recipe.getAverageRating());
+        response.put("totalRatings", recipe.getTotalRatings());
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PatchMapping("/{id}/view")
+    public ResponseEntity<?> markAsViewed(@PathVariable Long id) {
+        Recipe recipe = recipeService.findById(id);
+        if(recipe == null) return new ResponseEntity<>("Recipe not found", HttpStatus.NOT_FOUND);
+
+        recipe.setViews(recipe.getViews() + 1);
+        recipeRepository.save(recipe);
+
+        return new ResponseEntity<>(Map.of("views",recipe.getViews()), HttpStatus.OK);
+    }
+
+
+    @PostMapping("/{id}/favorite")
+    public ResponseEntity<?> toggleFavorite(@PathVariable Long id, @RequestParam boolean isFavorite) {
+        Recipe recipe = recipeService.findById(id);
+        if (recipe == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found");
+        }
+        if (isFavorite) {
+            recipe.setFavorites(recipe.getFavorites() + 1);
+        } else {
+            recipe.setFavorites(recipe.getFavorites() - 1);
+        }
+        recipeService.save(recipe); // Save updated recipe
+        return ResponseEntity.ok(Map.of("favorites", recipe.getFavorites(), "isFavorite", isFavorite));
+    }
+
+
+    @GetMapping("/stats")
+    public List<RecipeStatsDTO> getRecipeStats() {
+        return recipeService.getRecipeStats();
+    }
+
+
+    @GetMapping("/category-distribution")
+    public Map<String, Double> getCategoryDistribution() {
+        return recipeService.getCategoryDistribution();
     }
 
 }

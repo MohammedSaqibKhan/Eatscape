@@ -71,16 +71,26 @@ public class Recipe {
     // Rating fields
     @ElementCollection
     @JsonIgnore // Optional: Only expose averageRating in the response if needed
-    private List<Integer> ratings; // Individual ratings (e.g., from 1 to 5 stars)
+    private List<Double> ratings; // Individual ratings (e.g., from 1 to 5 stars)
 
     private Double averageRating; // Calculated average rating
+
+    private int totalRatings;
+
+    @Column(nullable = false)
+    private boolean isDeleted = false;
+
+    public int getTotalRatings() {
+        return ratings != null ? ratings.size() : 0;
+    }
+
 
     /**
      * Add a new rating to the recipe and update the average rating.
      *
      * @param newRating the rating to add (e.g., 1-5)
      */
-    public void addRating(int newRating) {
+    public void addRating(double newRating) {
         if (ratings == null) {
             ratings = new ArrayList<>();
         }
@@ -97,9 +107,11 @@ public class Recipe {
             this.averageRating = null;
         } else {
             this.averageRating = ratings.stream()
-                    .mapToInt(Integer::intValue)
+                    .mapToDouble(Double::doubleValue)
                     .average()
                     .orElse(0.0);
+
+            this.averageRating = Math.round(this.averageRating * 2) / 2.0;
         }
     }
 }
