@@ -35,6 +35,7 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     public Recipe createRecipe(RecipeDTO recipeRequest) {
         // Validate DietType: Check both ID and name
+        System.out.println(recipeRequest.getDietType().getName() + "   " + recipeRequest.getDietType().getId());
         DietType dietType = dietTypeRepository.findById(recipeRequest.getDietType().getId())
                 .filter(d -> d.getName().equals(recipeRequest.getDietType().getName()))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid DietType ID or name: " + recipeRequest.getDietType().getId()));
