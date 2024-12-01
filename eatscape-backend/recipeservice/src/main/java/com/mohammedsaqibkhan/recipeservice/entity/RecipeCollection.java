@@ -3,6 +3,7 @@ package com.mohammedsaqibkhan.recipeservice.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 @Entity
@@ -20,7 +21,7 @@ public class RecipeCollection {
     @ElementCollection
     private List<String> tags; // Optional list of tags for the collection (e.g., Vegan, Low-Carb)
 
-    @ManyToMany
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "collection_recipe",
             joinColumns = @JoinColumn(name = "collection_id"),
@@ -30,4 +31,8 @@ public class RecipeCollection {
 
     @Column(name = "is_deleted")
     private boolean isDeleted = false;
+
+    public void markAsDeleted() {
+        this.isDeleted = true;
+    }
 }

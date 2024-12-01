@@ -66,4 +66,11 @@ public class RecipeCollectionService {
         return recipeCollectionRepository.save(collection);
     }
 
+    public void deleteCollectionById(Long collectionId) {
+        RecipeCollection collection = recipeCollectionRepository.findById(collectionId)
+                .orElseThrow(() -> new RuntimeException("Collection not found"));
+        collection.markAsDeleted();
+        recipeCollectionRepository.save(collection);
+    }
+
 }

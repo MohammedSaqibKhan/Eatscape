@@ -57,4 +57,12 @@ public class RecipeCollectionController {
         return ResponseEntity.ok(updatedCollection);
     }
 
+
+    @DeleteMapping("/{collectionId}")
+    public ResponseEntity<Void> deleteCollection(@PathVariable Long collectionId) {
+        recipeCollectionService.deleteCollectionById(collectionId);
+        return ResponseEntity.noContent().build();
+    }
+
+
 }
