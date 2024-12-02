@@ -2,12 +2,12 @@ package com.mohammedsaqibkhan.recipeservice.dto;
 
 import com.mohammedsaqibkhan.recipeservice.entity.*;
 import com.mohammedsaqibkhan.recipeservice.enums.DifficultyLevel;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -29,7 +29,6 @@ public class RecipeDTO {
     private List<RecipeStep> steps;
 
     private String imageUrl;
-    private String videoUrl;
     private DifficultyLevel difficultyLevel;
 
     private boolean isFavorite;
@@ -38,4 +37,10 @@ public class RecipeDTO {
 
     private List<String> tags;
     private String cuisine;
+
+    // New fields added from Recipe entity
+    private Double averageRating;  // Average rating (calculated)
+    private int totalRatings;      // Total number of ratings
+    private LocalDate date;        // Date associated with the recipe
+    private boolean isDeleted;     // Flag to check if deleted
 }

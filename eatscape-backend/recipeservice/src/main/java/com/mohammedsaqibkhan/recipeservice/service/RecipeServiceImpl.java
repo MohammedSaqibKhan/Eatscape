@@ -10,12 +10,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,8 +52,7 @@ public class RecipeServiceImpl implements RecipeService {
 
 
         String imageUrl = recipeRequest.getImageUrl();
-        if (imageUrl == null || imageUrl.isEmpty()) {
-            String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpg";
+            String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpeg";
             System.out.println("Dynamic file name: " + dynamicFileName);
 
             // Load the resource
@@ -69,7 +66,6 @@ public class RecipeServiceImpl implements RecipeService {
                 // File does not exist
                 System.out.println("Image not found locally. Proceeding to AI image generation...");
             }
-        }
 
 
         Recipe recipe = Recipe.builder()
@@ -81,13 +77,16 @@ public class RecipeServiceImpl implements RecipeService {
                 .dietType(recipeRequest.getDietType())
                 .mealType(recipeRequest.getMealType())
                 .imageUrl(imageUrl)
-                .videoUrl(recipeRequest.getVideoUrl())
                 .difficultyLevel(recipeRequest.getDifficultyLevel())
                 .isFavorite(recipeRequest.isFavorite())
                 .views(recipeRequest.getViews())
                 .favorites(recipeRequest.getFavorites())
                 .tags(recipeRequest.getTags())
                 .cuisine(recipeRequest.getCuisine())
+                .averageRating(recipeRequest.getAverageRating())
+                .totalRatings(recipeRequest.getTotalRatings())
+                .date(recipeRequest.getDate())
+                .isDeleted(recipeRequest.isDeleted())
                 .build();
 
         // Save the Recipe entity
@@ -207,6 +206,9 @@ public class RecipeServiceImpl implements RecipeService {
         return randomRecipes;
     }
 
+
+
+
     @Override
     public Recipe findById(Long id) {
         Optional<Recipe> recipe = recipeRepository.findById(id);
@@ -288,6 +290,57 @@ public class RecipeServiceImpl implements RecipeService {
                         Map.Entry::getKey,
                         entry -> (entry.getValue() * 100.0) / totalRecipes
                 ));
+    }
+
+//    public Map<String, Recipe> getDailyMealPlanByDate(String date) {
+//        // Define meal types
+//        List<String> mealTypes = Arrays.asList("Breakfast", "Lunch", "Dinner");
+//        Map<String, Recipe> dailyMealPlan = new HashMap<>();
+//
+//        for (String mealType : mealTypes) {
+//            // Fetch recipes for the specified meal type and date
+//            List<Recipe> recipes = recipeRepository.findByMealType_NameAndDateAndIsDeletedFalse(mealType, date);
+//
+//            if (!recipes.isEmpty()) {
+//                // Select the first recipe for simplicity, or implement your own logic
+//                dailyMealPlan.put(mealType, recipes.get(0));
+//            }
+//        }
+//
+//        return dailyMealPlan;
+//    }
+
+    @Transactional
+    public Map<String, Recipe> generateDailyMealPlan(LocalDate date) {
+        List<String> mealTypes = Arrays.asList("Breakfast", "Lunch", "Dinner");
+        Map<String, Recipe> dailyMealPlan = new HashMap<>();
+
+        Random random = new Random();
+
+        for (String mealType : mealTypes) {
+            List<Recipe> availableRecipes = recipeRepository.findByMealType(mealType);
+            if (!availableRecipes.isEmpty()) {
+                Recipe randomRecipe = availableRecipes.get(random.nextInt(availableRecipes.size()));
+                randomRecipe.setDate(date); // Associate the recipe with the selected date
+                recipeRepository.save(randomRecipe); // Persist the updated recipe
+                dailyMealPlan.put(mealType, randomRecipe);
+            }
+        }
+
+        return dailyMealPlan;
+    }
+
+    @Override
+    public Map<String, Recipe> getMealPlanForDate(LocalDate date) {
+            List<Recipe> recipesForDate = recipeRepository.findByDate(date);
+
+            // Group recipes by meal type
+            Map<String, Recipe> mealPlan = new HashMap<>();
+            for (Recipe recipe : recipesForDate) {
+                mealPlan.put(recipe.getMealType().getName(), recipe);
+            }
+
+            return mealPlan;
     }
 
 

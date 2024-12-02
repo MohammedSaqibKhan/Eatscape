@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +110,20 @@ public class RecipeController {
     @GetMapping("/daily-random")
     public Map<String, Recipe> getDailyRandomRecipes() {
         return recipeService.getRandomRecipesForMeals();
+    }
+
+    @PostMapping("/daily-meal-plan")
+    public ResponseEntity<Map<String, Recipe>> generateDailyMealPlan(@RequestParam("date") String dateString) {
+        LocalDate date = LocalDate.parse(dateString);
+        Map<String, Recipe> mealPlan = recipeService.generateDailyMealPlan(date);
+        return ResponseEntity.ok(mealPlan);
+    }
+
+    @GetMapping("/daily-meal-plan")
+    public ResponseEntity<Map<String, Recipe>> getMealPlanForDate(@RequestParam("date") String dateString) {
+        LocalDate date = LocalDate.parse(dateString);
+        Map<String, Recipe> mealPlan = recipeService.getMealPlanForDate(date);
+        return ResponseEntity.ok(mealPlan);
     }
 
 

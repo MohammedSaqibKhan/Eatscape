@@ -4,8 +4,10 @@ import com.mohammedsaqibkhan.recipeservice.entity.DietType;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,4 +45,19 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     List<Recipe> findAllByIsDeletedFalse();
 
     Optional<Recipe> findByIdAndIsDeletedFalse(Long id);
+
+//    List<Recipe> findByMealType_NameAndDateAndIsDeletedFalse(String mealType, String date);
+
+
+    // Fetch recipes for a specific meal type and date
+    @Query("SELECT r FROM Recipe r WHERE r.mealType.name = :mealType AND r.date = :date AND r.isDeleted = false")
+    List<Recipe> findByMealTypeAndDate(@Param("mealType") String mealType, @Param("date") LocalDate date);
+
+    // Fetch all recipes for a specific date
+    @Query("SELECT r FROM Recipe r WHERE r.date = :date AND r.isDeleted = false")
+    List<Recipe> findByDate(@Param("date") LocalDate date);
+
+    // Fetch all active recipes for a specific meal type
+    @Query("SELECT r FROM Recipe r WHERE r.mealType.name = :mealType AND r.isDeleted = false")
+    List<Recipe> findByMealType(@Param("mealType") String mealType);
 }

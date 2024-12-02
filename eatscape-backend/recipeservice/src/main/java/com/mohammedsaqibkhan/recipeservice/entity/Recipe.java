@@ -1,12 +1,15 @@
 package com.mohammedsaqibkhan.recipeservice.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.mohammedsaqibkhan.recipeservice.enums.DifficultyLevel;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -76,6 +79,10 @@ public class Recipe {
     private Double averageRating; // Calculated average rating
 
     private int totalRatings;
+
+    @Column(nullable = false)
+    private LocalDate date; // Date associated with the meal
+
 
     @Column(nullable = false)
     private boolean isDeleted = false;
