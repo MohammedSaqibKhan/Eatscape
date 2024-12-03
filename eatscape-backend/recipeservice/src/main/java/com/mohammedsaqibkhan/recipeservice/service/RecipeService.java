@@ -5,7 +5,9 @@ import com.mohammedsaqibkhan.recipeservice.dto.RecipeStatsDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public interface RecipeService {
     Recipe createRecipe(RecipeDTO recipe);
@@ -42,5 +44,6 @@ public interface RecipeService {
 
     Map<String, Recipe> generateDailyMealPlan(LocalDate date);
 
-    Map<String, Recipe> getMealPlanForDate(LocalDate date);
+
+
 }

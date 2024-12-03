@@ -3,17 +3,12 @@ package com.mohammedsaqibkhan.mealplanservice.service;
 import com.mohammedsaqibkhan.mealplanservice.dto.MealDto;
 import com.mohammedsaqibkhan.mealplanservice.entity.MealPlan;
 import com.mohammedsaqibkhan.mealplanservice.entity.MealPlanEntry;
-import com.mohammedsaqibkhan.mealplanservice.exception.MealPlanNotFoundException;
 import com.mohammedsaqibkhan.mealplanservice.repository.MealPlanEntryRepository;
 import com.mohammedsaqibkhan.mealplanservice.repository.MealPlanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.DeleteMapping;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 @Service
 public class MealPlanService {
@@ -78,27 +73,6 @@ public class MealPlanService {
 //    }
 
 
-//    public MealPlan findOrCreateMealPlan(Long userId) {
-//        return mealPlanRepository.findByUserId(userId)
-//                .orElseGet(() -> {
-//                    MealPlan newPlan = new MealPlan();
-//                    newPlan.setUserId(userId);
-//                    newPlan.setName("Default Plan");
-//                    newPlan.setStartDate(LocalDate.now());
-//                    newPlan.setEndDate(LocalDate.now().plusWeeks(1));
-//                    return mealPlanRepository.save(newPlan);
-//                });
-//    }
-
-//    public MealPlanEntry addMealToPlan(Long mealPlanId, Long mealId) {
-//        MealPlanEntry entry = new MealPlanEntry();
-//        entry.setMealPlanId(mealPlanId);
-//        entry.setMealId(mealId);
-//        entry.setMealType("Breakfast");
-//        entry.setDate(LocalDate.now());
-//        return mealPlanEntryRepository.save(entry);
-//    }
-
 
     public List<MealPlan> getMealPlansByUser(Long userId) {
         // Hardcoded user ID logic (replace this with authenticated user later)
@@ -106,12 +80,16 @@ public class MealPlanService {
     }
 
 
-//    public void deleteMealPlanById(Long mealPlanId) {
-//        deleteMealPlanEntriesByMealPlanId(mealPlanId);
-//        mealPlanRepository.deleteById(mealPlanId);
-//    }
-
     public List<MealPlanEntry> addMealsToPlan(String mealPlanName, List<MealPlanEntry> entries) {
         return null;
     }
+
+
+
+
+
+
+
+
+
 }

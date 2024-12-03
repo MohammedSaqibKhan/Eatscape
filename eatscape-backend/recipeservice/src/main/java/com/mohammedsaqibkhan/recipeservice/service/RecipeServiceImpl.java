@@ -330,18 +330,7 @@ public class RecipeServiceImpl implements RecipeService {
         return dailyMealPlan;
     }
 
-    @Override
-    public Map<String, Recipe> getMealPlanForDate(LocalDate date) {
-            List<Recipe> recipesForDate = recipeRepository.findByDate(date);
 
-            // Group recipes by meal type
-            Map<String, Recipe> mealPlan = new HashMap<>();
-            for (Recipe recipe : recipesForDate) {
-                mealPlan.put(recipe.getMealType().getName(), recipe);
-            }
-
-            return mealPlan;
-    }
 
 
 }

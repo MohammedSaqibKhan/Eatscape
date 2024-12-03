@@ -53,9 +53,13 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @Query("SELECT r FROM Recipe r WHERE r.mealType.name = :mealType AND r.date = :date AND r.isDeleted = false")
     List<Recipe> findByMealTypeAndDate(@Param("mealType") String mealType, @Param("date") LocalDate date);
 
-    // Fetch all recipes for a specific date
-    @Query("SELECT r FROM Recipe r WHERE r.date = :date AND r.isDeleted = false")
-    List<Recipe> findByDate(@Param("date") LocalDate date);
+    // Find recipes by date
+    // Find recipes by date (return List instead of Map)
+    List<Recipe> findByDate(LocalDate date);
+
+    // Delete recipes by date
+    void deleteByDate(LocalDate date);
+
 
     // Fetch all active recipes for a specific meal type
     @Query("SELECT r FROM Recipe r WHERE r.mealType.name = :mealType AND r.isDeleted = false")

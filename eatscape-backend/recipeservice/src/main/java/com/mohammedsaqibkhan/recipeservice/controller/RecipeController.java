@@ -1,5 +1,6 @@
 package com.mohammedsaqibkhan.recipeservice.controller;
 
+import com.mohammedsaqibkhan.recipeservice.dto.MealPlanRequestDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeStatsDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -113,18 +115,103 @@ public class RecipeController {
     }
 
     @PostMapping("/daily-meal-plan")
-    public ResponseEntity<Map<String, Recipe>> generateDailyMealPlan(@RequestParam("date") String dateString) {
+    public ResponseEntity<Map<String, Recipe>> generateDailyMealPlans(@RequestParam("date") String dateString) {
         LocalDate date = LocalDate.parse(dateString);
         Map<String, Recipe> mealPlan = recipeService.generateDailyMealPlan(date);
         return ResponseEntity.ok(mealPlan);
     }
 
-    @GetMapping("/daily-meal-plan")
-    public ResponseEntity<Map<String, Recipe>> getMealPlanForDate(@RequestParam("date") String dateString) {
-        LocalDate date = LocalDate.parse(dateString);
-        Map<String, Recipe> mealPlan = recipeService.getMealPlanForDate(date);
-        return ResponseEntity.ok(mealPlan);
+
+    @PostMapping("/daily-meal-plan/generate")
+    public ResponseEntity<Map<String, Recipe>> generateDailyMealPlan(@RequestBody MealPlanRequestDTO request) {
+        try {
+            LocalDate date = LocalDate.parse(request.getDate());
+            // Generate meal plan and save to DB in one go
+            Map<String, Recipe> mealPlan = recipeService.generateDailyMealPlan(date);
+
+            if (mealPlan == null || mealPlan.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            }
+
+            return ResponseEntity.ok(mealPlan); // Return the generated meal plan
+        } catch (Exception e) {
+            System.out.println("Error generating daily meal plan: " + e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
+
+
+
+    @PostMapping("/daily-meal-plan/save")
+    public ResponseEntity<String> saveDailyMealPlan(@RequestBody MealPlanRequestDTO request) {
+        try {
+            LocalDate date = LocalDate.parse(request.getDate());
+            Map<String, Recipe> mealPlan = request.getMealPlan();
+
+            // Clear any existing meal plan for the date
+            recipeRepository.deleteByDate(date);
+
+            // Save the meal plan to the database
+            for (String mealType : mealPlan.keySet()) {
+                Recipe recipe = mealPlan.get(mealType);
+                recipe.setDate(date);
+                recipeRepository.save(recipe); // Save the recipe for the given date
+            }
+
+            return ResponseEntity.ok("Meal plan saved successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error saving meal plan.");
+        }
+    }
+
+
+    @PostMapping("/daily-meal-plan/refresh")
+    public ResponseEntity<String> refreshDailyMealPlan(@RequestParam("date") String dateString) {
+        try {
+            LocalDate date = LocalDate.parse(dateString);
+
+            // Delete existing meal plan for the specified date
+            recipeRepository.deleteByDate(date);
+
+            // Generate the new meal plan for the date
+            Map<String, Recipe> refreshedMealPlan = recipeService.generateDailyMealPlan(date);
+
+            // Save the refreshed meal plan to the database
+            for (String mealType : refreshedMealPlan.keySet()) {
+                Recipe recipe = refreshedMealPlan.get(mealType);
+                recipe.setDate(date);
+                recipeRepository.save(recipe);
+            }
+
+            return ResponseEntity.ok("Meal plan refreshed successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error refreshing meal plan.");
+        }
+    }
+
+    @GetMapping("/daily-meal-plan")
+    public ResponseEntity<Map<String, Recipe>> getDailyMealPlan(@RequestParam("date") String dateString) {
+        try {
+            LocalDate date = LocalDate.parse(dateString);
+
+                    List<Recipe> recipes = recipeRepository.findByDate(date);
+
+            // Convert List<Recipe> to Map<String, Recipe> based on meal type
+            Map<String, Recipe> mealPlan = recipes.stream()
+                    .collect(Collectors.toMap(recipe -> recipe.getMealType().getName(), recipe -> recipe));recipeRepository.findByDate(date);
+
+
+            if (mealPlan.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null); // No meal plan for that date
+            }
+
+            return ResponseEntity.ok(mealPlan); // Return the meal plan for the date
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+
 
 
     @PostMapping("/{id}/rating")
@@ -186,5 +273,13 @@ public class RecipeController {
     public Map<String, Double> getCategoryDistribution() {
         return recipeService.getCategoryDistribution();
     }
+
+
+    @GetMapping("/meal-type")
+    public ResponseEntity<List<Recipe>> getRecipesByMealType(@RequestParam String mealType) {
+        List<Recipe> recipes = recipeRepository.findByMealType(mealType);
+        return ResponseEntity.ok(recipes);
+    }
+
 
 }

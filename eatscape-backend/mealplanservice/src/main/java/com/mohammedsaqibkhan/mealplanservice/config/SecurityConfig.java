@@ -25,7 +25,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.cors().and().csrf().disable()
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/mealplans/**", "/mealplanentries/**", "/random/**", "/overview/**").permitAll() // Public endpoints, if any
+                        .requestMatchers("/mealplans/**", "/mealplanentries/**",
+                                "/random/**", "/overview/**", "/meal-plans/**").permitAll() // Public endpoints, if any
                         .anyRequest().authenticated()
                 )
                 .sessionManagement()
