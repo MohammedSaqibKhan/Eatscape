@@ -1,5 +1,8 @@
 package com.mohammedsaqibkhan.recipeservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mohammedsaqibkhan.recipeservice.dto.NutritionixResponseDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeStatsDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.*;
@@ -8,8 +11,12 @@ import com.mohammedsaqibkhan.recipeservice.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +27,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class RecipeServiceImpl implements RecipeService {
+
+    private static final Logger log = LoggerFactory.getLogger(RecipeServiceImpl.class);
     private final RecipeRepository recipeRepository;
     private final DietTypeRepository dietTypeRepository;
     private final MealTypeRepository mealTypeRepository;
@@ -27,13 +36,15 @@ public class RecipeServiceImpl implements RecipeService {
     private final NutritionalInfoRepository nutritionalInfoRepository;
     private final RecipeStepRepository recipeStepRepository;
 
+    private final RestTemplate restTemplate;
+
+    private final String nutritionendpoint = "http://localhost:8088/api/nutrition";
 
 
-    @Transactional
     @Override
+    @Transactional
     public Recipe createRecipe(RecipeDTO recipeRequest) {
         // Validate DietType: Check both ID and name
-        System.out.println(recipeRequest.getDietType().getName() + "   " + recipeRequest.getDietType().getId());
         DietType dietType = dietTypeRepository.findById(recipeRequest.getDietType().getId())
                 .filter(d -> d.getName().equals(recipeRequest.getDietType().getName()))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid DietType ID or name: " + recipeRequest.getDietType().getId()));
@@ -49,33 +60,18 @@ public class RecipeServiceImpl implements RecipeService {
             throw new IllegalArgumentException("Recipe with name '" + recipeRequest.getName() + "' and diet type '" + dietType.getName() + "' already exists.");
         }
 
+        // Handle image URL
+        String imageUrl = handleImage(recipeRequest);
 
-
-        String imageUrl = recipeRequest.getImageUrl();
-            String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpeg";
-            System.out.println("Dynamic file name: " + dynamicFileName);
-
-            // Load the resource
-            Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
-
-            try (InputStream inputStream = resource.getInputStream()) {
-                // File exists
-                imageUrl = "/images/recipes/" + dynamicFileName;
-                System.out.println("Image found: " + imageUrl);
-            } catch (IOException e) {
-                // File does not exist
-                System.out.println("Image not found locally. Proceeding to AI image generation...");
-            }
-
-
+        // Build and save the Recipe entity
         Recipe recipe = Recipe.builder()
                 .name(recipeRequest.getName())
                 .description(recipeRequest.getDescription())
                 .prepTime(recipeRequest.getPrepTime())
                 .cookTime(recipeRequest.getCookTime())
                 .servings(recipeRequest.getServings())
-                .dietType(recipeRequest.getDietType())
-                .mealType(recipeRequest.getMealType())
+                .dietType(dietType)
+                .mealType(mealType)
                 .imageUrl(imageUrl)
                 .difficultyLevel(recipeRequest.getDifficultyLevel())
                 .isFavorite(recipeRequest.isFavorite())
@@ -89,38 +85,179 @@ public class RecipeServiceImpl implements RecipeService {
                 .isDeleted(recipeRequest.isDeleted())
                 .build();
 
-        // Save the Recipe entity
         Recipe savedRecipe = recipeRepository.save(recipe);
 
-        // Set recipeId for ingredients and save
+        // Save Ingredients
+        saveIngredients(recipeRequest, savedRecipe);
+
+        // Save Steps
+        saveSteps(recipeRequest, savedRecipe);
+
+        // Fetch and Save Nutritional Info
+        saveNutritionalInfo(recipeRequest, savedRecipe);
+
+        return savedRecipe;
+    }
+
+    private String handleImage(RecipeDTO recipeRequest) {
+        String imageUrl = recipeRequest.getImageUrl();
+        String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpeg";
+
+        Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
+        try (InputStream inputStream = resource.getInputStream()) {
+            imageUrl = "/images/recipes/" + dynamicFileName;
+        } catch (IOException e) {
+            System.out.println("Image not found locally. Proceeding with provided URL.");
+        }
+        return imageUrl;
+    }
+
+    private void saveIngredients(RecipeDTO recipeRequest, Recipe savedRecipe) {
         if (recipeRequest.getIngredients() != null) {
             recipeRequest.getIngredients().forEach(ingredient -> {
-                ingredient.setRecipe(savedRecipe); // Map recipe entity
-                ingredient.setRecipeId(savedRecipe.getId()); // Set recipeId
+                ingredient.setRecipe(savedRecipe);
+                ingredient.setRecipeId(savedRecipe.getId());
             });
-            List<RecipeIngredient> ingredients = ingredientRepository.saveAll(recipeRequest.getIngredients());
+            ingredientRepository.saveAll(recipeRequest.getIngredients());
         }
+    }
 
-
-
-        // Set recipeId for steps and save
+    private void saveSteps(RecipeDTO recipeRequest, Recipe savedRecipe) {
         if (recipeRequest.getSteps() != null) {
             recipeRequest.getSteps().forEach(step -> {
-                step.setRecipe(savedRecipe); // Map recipe entity
-                step.setRecipeId(savedRecipe.getId()); // Set recipeId
+                step.setRecipe(savedRecipe);
+                step.setRecipeId(savedRecipe.getId());
             });
             recipeStepRepository.saveAll(recipeRequest.getSteps());
         }
+    }
 
-        // Set recipeId for nutritionalInfo and save
-        if (recipeRequest.getNutritionalInfo() != null) {
-            NutritionalInfo nutritionalInfo = recipeRequest.getNutritionalInfo();
+    private void saveNutritionalInfo(RecipeDTO recipeRequest, Recipe savedRecipe) {
+        if (recipeRequest.getIngredients() != null) {
+            // Fetch nutrition info from the Nutrition Service
+            NutritionixResponseDTO nutritionResponse = fetchNutritionFromService(recipeRequest.getIngredients());
+            NutritionalInfo nutritionalInfo = mapNutritionixToEntity(nutritionResponse);
             nutritionalInfo.setRecipe(savedRecipe);
             nutritionalInfo.setRecipeId(savedRecipe.getId());
             nutritionalInfoRepository.save(nutritionalInfo);
         }
+    }
 
-        return savedRecipe;
+    private NutritionixResponseDTO fetchNutritionFromService(List<RecipeIngredient> ingredients) {
+        try {
+            ResponseEntity<NutritionixResponseDTO> response = restTemplate.postForEntity(
+                    nutritionendpoint + "/analyze", ingredients, NutritionixResponseDTO.class
+            );
+            log.info("Nutritionix API response: {}", response);
+            return response.getBody();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch nutrition data: " + e.getMessage());
+        }
+    }
+
+    private NutritionalInfo mapNutritionixToEntity(NutritionixResponseDTO nutritionResponse) {
+        NutritionalInfo nutritionalInfo = new NutritionalInfo();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        // Calculate total calories and other aggregated fields
+        double totalCalories = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_calories).sum();
+        nutritionalInfo.setCalories(totalCalories);
+
+        double totalFat = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_total_fat).sum();
+        nutritionalInfo.setTotalFat(totalFat);
+
+        double saturatedFat = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_saturated_fat).sum();
+        nutritionalInfo.setSaturatedFat(saturatedFat);
+
+        double cholesterol = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_cholesterol).sum();
+        nutritionalInfo.setCholesterol(cholesterol);
+
+        double sodium = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_sodium).sum();
+        nutritionalInfo.setSodium(sodium);
+
+        double carbs = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_total_carbohydrate).sum();
+        nutritionalInfo.setCarbs(carbs);
+
+        double dietaryFiber = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_dietary_fiber).sum();
+        nutritionalInfo.setDietaryFiber(dietaryFiber);
+
+        double sugars = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_sugars).sum();
+        nutritionalInfo.setSugars(sugars);
+
+        double protein = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_protein).sum();
+        nutritionalInfo.setProtein(protein);
+
+        double potassium = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_potassium).sum();
+        nutritionalInfo.setPotassium(potassium);
+
+        double phosphorus = nutritionResponse.getFoods()
+                .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_p).sum();
+        nutritionalInfo.setPhosphorus(phosphorus);
+
+        // Aggregate full nutrients by summing corresponding nutrient values
+        List<Map<String, Object>> aggregatedFullNutrients = aggregateFullNutrients(nutritionResponse);
+
+        // Serialize aggregated full nutrients as JSON
+        try {
+            String fullNutrientsJson = objectMapper.writeValueAsString(aggregatedFullNutrients);
+            nutritionalInfo.setFullNutrients(fullNutrientsJson);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize full nutrients: " + e.getMessage());
+        }
+
+        // Assign non-aggregated fields from the first food item
+        if (!nutritionResponse.getFoods().isEmpty()) {
+            NutritionixResponseDTO.FoodDTO firstFood = nutritionResponse.getFoods().get(0);
+            nutritionalInfo.setFoodName(firstFood.getFood_name());
+            nutritionalInfo.setBrandName(firstFood.getBrand_name());
+            nutritionalInfo.setServingQty(firstFood.getServing_qty());
+            nutritionalInfo.setServingUnit(firstFood.getServing_unit());
+            nutritionalInfo.setServingWeightGrams(firstFood.getServing_weight_grams());
+            nutritionalInfo.setSource(firstFood.getSource());
+            nutritionalInfo.setRawFood(firstFood.getMetadata().is_raw_food());
+            nutritionalInfo.setNdbNo(firstFood.getNdb_no());
+        }
+
+        return nutritionalInfo;
+    }
+
+    // Helper method to aggregate full nutrients
+    private List<Map<String, Object>> aggregateFullNutrients(NutritionixResponseDTO nutritionResponse) {
+        // Create a map to store the aggregated values for each nutrient
+        Map<String, Double> aggregatedNutrients = new HashMap<>();
+
+        // Iterate over each food item
+        nutritionResponse.getFoods().forEach(food -> {
+            food.getFull_nutrients().forEach(nutrient -> {
+                String nutrientName = nutrient.getNutrient_name();  // Assuming there's a 'name' key for the nutrient
+                double nutrientValue = nutrient.getValue();
+
+                // Aggregate the nutrient value
+                aggregatedNutrients.put(nutrientName,
+                        aggregatedNutrients.getOrDefault(nutrientName, 0.0) + nutrientValue);
+            });
+        });
+
+        // Convert the aggregated nutrients map into a list of key-value pairs
+        List<Map<String, Object>> aggregatedNutrientList = new ArrayList<>();
+        aggregatedNutrients.forEach((name, value) -> {
+            Map<String, Object> nutrientMap = new HashMap<>();
+            nutrientMap.put("name", name);
+            nutrientMap.put("value", value);
+            aggregatedNutrientList.add(nutrientMap);
+        });
+
+        return aggregatedNutrientList;
     }
 
     @Override
