@@ -1,5 +1,6 @@
 package com.mohammedsaqibkhan.mealplanservice.service;
 
+import com.mohammedsaqibkhan.mealplanservice.dto.FullNutrientDTO;
 import com.mohammedsaqibkhan.mealplanservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.mealplanservice.entity.Planner;
 import com.mohammedsaqibkhan.mealplanservice.repository.PlannerRepository;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 public class PlannerService {
 
-    private  WebClient webClient;
+    private WebClient webClient;
     private final PlannerRepository plannerRepository;
 
     @Value("${recipe.service.url}")
@@ -59,6 +60,7 @@ public class PlannerService {
                 dailyMealPlan.put(mealType, randomRecipe);
             }
         }
+
 
         return dailyMealPlan;
     }
@@ -117,7 +119,7 @@ public class PlannerService {
 
     // Refresh the meal plan for a specific date
     @Transactional
-    public Map<String, RecipeDTO> refreshMealPlan(LocalDate date) {
+    public Map<String, Object> refreshMealPlan(LocalDate date) {
         // Delete the existing meal plan
         plannerRepository.deleteByDate(date);
 
@@ -127,7 +129,59 @@ public class PlannerService {
         // Save the newly generated meal plan
         saveMealPlan(date, newMealPlan);
 
-        return newMealPlan;
+        // Separate maps for main and full nutrients
+        Map<String, Object> response = new HashMap<>();
+        Map<String, Double> mainNutrients = new HashMap<>();
+        Map<String, Map<String, Object>> fullNutrients = new HashMap<>();
+
+        for (Map.Entry<String, RecipeDTO> entry : newMealPlan.entrySet()) {
+            RecipeDTO recipe = entry.getValue();
+
+            // Aggregate main nutrients
+            addToTotal(mainNutrients, "calories", recipe.getNutritionalInfo().getCalories());
+            addToTotal(mainNutrients, "protein", recipe.getNutritionalInfo().getProtein());
+            addToTotal(mainNutrients, "fat", recipe.getNutritionalInfo().getTotalFat());
+            addToTotal(mainNutrients, "carbohydrates", recipe.getNutritionalInfo().getTotalCarbohydrates());
+
+            // Aggregate full nutrients from all ingredients
+            if (recipe.getNutritionalInfo().getFullNutrients() != null) {
+                for (FullNutrientDTO nutrient : recipe.getNutritionalInfo().getFullNutrients()) {
+                    addFullNutrient(fullNutrients, nutrient);
+                }
+            }
+        }
+
+        response.put("mealPlan", newMealPlan);
+        response.put("mainNutrients", mainNutrients);
+        response.put("fullNutrients", fullNutrients);
+
+        return response;
     }
 
+    // Helper method to add nutrient values to the total
+    private void addToTotal(Map<String, Double> nutrients, String nutrientName, Double value) {
+        nutrients.put(nutrientName, nutrients.getOrDefault(nutrientName, 0.0) + (value != null ? value : 0.0));
+    }
+
+    // Helper method to add full nutrient details
+    private void addFullNutrient(Map<String, Map<String, Object>> fullNutrients, FullNutrientDTO nutrient) {
+        String name = nutrient.getNutrientName();
+        double value = nutrient.getValue() != 0 ? nutrient.getValue() : 0.0;
+        String category = nutrient.getCategory();
+        String unit = nutrient.getUnit();
+
+        if (fullNutrients.containsKey(name)) {
+            // Update the value for an existing nutrient
+            Map<String, Object> existingNutrient = fullNutrients.get(name);
+            double currentValue = (double) existingNutrient.get("value");
+            existingNutrient.put("value", currentValue + value);
+        } else {
+            // Add a new nutrient
+            Map<String, Object> nutrientDetails = new HashMap<>();
+            nutrientDetails.put("value", value);
+            nutrientDetails.put("category", category);
+            nutrientDetails.put("unit", unit);
+            fullNutrients.put(name, nutrientDetails);
+        }
+    }
 }

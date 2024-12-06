@@ -1,6 +1,5 @@
 package com.mohammedsaqibkhan.recipeservice.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mohammedsaqibkhan.recipeservice.dto.NutritionixResponseDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
@@ -9,14 +8,14 @@ import com.mohammedsaqibkhan.recipeservice.entity.*;
 import com.mohammedsaqibkhan.recipeservice.exception.ResourceNotFoundException;
 import com.mohammedsaqibkhan.recipeservice.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,10 +35,13 @@ public class RecipeServiceImpl implements RecipeService {
     private final NutritionalInfoRepository nutritionalInfoRepository;
     private final RecipeStepRepository recipeStepRepository;
 
+    private final CraiyonClient craiyonClient;
+
     private final RestTemplate restTemplate;
 
     private final String nutritionendpoint = "http://localhost:8088/api/nutrition";
 
+    private final ImageService imageService;
 
     @Override
     @Transactional
@@ -87,14 +89,15 @@ public class RecipeServiceImpl implements RecipeService {
 
         Recipe savedRecipe = recipeRepository.save(recipe);
 
-        // Save Ingredients
-        saveIngredients(recipeRequest, savedRecipe);
-
         // Save Steps
         saveSteps(recipeRequest, savedRecipe);
 
+        NutritionixResponseDTO nutritionResponse = fetchNutritionFromService(recipeRequest.getIngredients());
         // Fetch and Save Nutritional Info
-        saveNutritionalInfo(recipeRequest, savedRecipe);
+        saveNutritionalInfo(recipeRequest, savedRecipe, nutritionResponse);
+
+        // Save Ingredients
+        saveIngredients(recipeRequest, savedRecipe);
 
         return savedRecipe;
     }
@@ -112,15 +115,7 @@ public class RecipeServiceImpl implements RecipeService {
         return imageUrl;
     }
 
-    private void saveIngredients(RecipeDTO recipeRequest, Recipe savedRecipe) {
-        if (recipeRequest.getIngredients() != null) {
-            recipeRequest.getIngredients().forEach(ingredient -> {
-                ingredient.setRecipe(savedRecipe);
-                ingredient.setRecipeId(savedRecipe.getId());
-            });
-            ingredientRepository.saveAll(recipeRequest.getIngredients());
-        }
-    }
+
 
     private void saveSteps(RecipeDTO recipeRequest, Recipe savedRecipe) {
         if (recipeRequest.getSteps() != null) {
@@ -132,14 +127,48 @@ public class RecipeServiceImpl implements RecipeService {
         }
     }
 
-    private void saveNutritionalInfo(RecipeDTO recipeRequest, Recipe savedRecipe) {
+    private void saveNutritionalInfo(RecipeDTO recipeRequest, Recipe savedRecipe,
+                                     NutritionixResponseDTO nutritionResponse) {
         if (recipeRequest.getIngredients() != null) {
             // Fetch nutrition info from the Nutrition Service
-            NutritionixResponseDTO nutritionResponse = fetchNutritionFromService(recipeRequest.getIngredients());
+
             NutritionalInfo nutritionalInfo = mapNutritionixToEntity(nutritionResponse);
             nutritionalInfo.setRecipe(savedRecipe);
             nutritionalInfo.setRecipeId(savedRecipe.getId());
             nutritionalInfoRepository.save(nutritionalInfo);
+        }
+    }
+
+
+
+    // Method to save ingredients and associate them with the recipe
+    public void saveIngredients(RecipeDTO recipeRequest, Recipe savedRecipe) {
+        if (recipeRequest.getIngredients() != null) {
+            List<RecipeIngredient> ingredients = recipeRequest.getIngredients();
+
+            // For each ingredient, set the image URL from Pexels
+            ingredients.forEach(ingredient -> {
+                ingredient.setRecipe(savedRecipe);
+                ingredient.setRecipeId(savedRecipe.getId());
+
+                // Generate image for the ingredient using Pexels
+                String ingredientName = ingredient.getIngredientName();
+                String imageUrl = "";
+                String dynamicFileName = ingredientName.replaceAll("\\s+", "_") + ".jpeg";
+
+                Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
+                try (InputStream inputStream = resource.getInputStream()) {
+                    imageUrl = "/images/recipes/" + dynamicFileName;
+                } catch (IOException e) {
+                    System.out.println("Image not found locally. Proceeding with provided URL.");
+                }
+
+                // Set the image URL for the ingredient
+                ingredient.setImageUrl(imageUrl);
+            });
+
+            // Save all the ingredients to the repository
+            ingredientRepository.saveAll(ingredients);
         }
     }
 
@@ -180,9 +209,9 @@ public class RecipeServiceImpl implements RecipeService {
                 .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_sodium).sum();
         nutritionalInfo.setSodium(sodium);
 
-        double carbs = nutritionResponse.getFoods()
+        double totalCarbohydrates = nutritionResponse.getFoods()
                 .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_total_carbohydrate).sum();
-        nutritionalInfo.setCarbs(carbs);
+        nutritionalInfo.setTotalCarbohydrates(totalCarbohydrates);
 
         double dietaryFiber = nutritionResponse.getFoods()
                 .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_dietary_fiber).sum();
@@ -204,16 +233,23 @@ public class RecipeServiceImpl implements RecipeService {
                 .stream().mapToDouble(NutritionixResponseDTO.FoodDTO::getNf_p).sum();
         nutritionalInfo.setPhosphorus(phosphorus);
 
-        // Aggregate full nutrients by summing corresponding nutrient values
+        // Aggregate nutrients
         List<Map<String, Object>> aggregatedFullNutrients = aggregateFullNutrients(nutritionResponse);
 
-        // Serialize aggregated full nutrients as JSON
-        try {
-            String fullNutrientsJson = objectMapper.writeValueAsString(aggregatedFullNutrients);
-            nutritionalInfo.setFullNutrients(fullNutrientsJson);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize full nutrients: " + e.getMessage());
-        }
+        // Map full nutrients
+        List<FullNutrient> fullNutrientEntities = aggregatedFullNutrients.stream()
+                .map(nutrientMap -> FullNutrient.builder()
+                        .attrId((int) nutrientMap.get("attr_id"))
+                        .nutrientName((String) nutrientMap.get("nutrient_name"))
+                        .value((double) nutrientMap.get("value"))
+                        .category((String) nutrientMap.get("category"))
+                        .unit((String) nutrientMap.get("unit"))
+                        .nutritionalInfo(nutritionalInfo) // Set parent entity
+                        .build())
+                .toList();
+
+        nutritionalInfo.setFullNutrients(fullNutrientEntities); // Set mapped full nutrients
+
 
         // Assign non-aggregated fields from the first food item
         if (!nutritionResponse.getFoods().isEmpty()) {
@@ -224,7 +260,7 @@ public class RecipeServiceImpl implements RecipeService {
             nutritionalInfo.setServingUnit(firstFood.getServing_unit());
             nutritionalInfo.setServingWeightGrams(firstFood.getServing_weight_grams());
             nutritionalInfo.setSource(firstFood.getSource());
-            nutritionalInfo.setRawFood(firstFood.getMetadata().is_raw_food());
+            nutritionalInfo.setIsRawFood(firstFood.getMetadata().is_raw_food());
             nutritionalInfo.setNdbNo(firstFood.getNdb_no());
         }
 
@@ -233,31 +269,29 @@ public class RecipeServiceImpl implements RecipeService {
 
     // Helper method to aggregate full nutrients
     private List<Map<String, Object>> aggregateFullNutrients(NutritionixResponseDTO nutritionResponse) {
-        // Create a map to store the aggregated values for each nutrient
-        Map<String, Double> aggregatedNutrients = new HashMap<>();
+        // Map to store aggregated nutrient data
+        Map<Integer, Map<String, Object>> aggregatedNutrients = new HashMap<>();
 
-        // Iterate over each food item
+        // Iterate through foods and their full_nutrients
         nutritionResponse.getFoods().forEach(food -> {
             food.getFull_nutrients().forEach(nutrient -> {
-                String nutrientName = nutrient.getNutrient_name();  // Assuming there's a 'name' key for the nutrient
-                double nutrientValue = nutrient.getValue();
+                int attrId = nutrient.getAttr_id();
+                aggregatedNutrients.putIfAbsent(attrId, new HashMap<>(Map.of(
+                        "attr_id", attrId,
+                        "nutrient_name", nutrient.getNutrient_name(),
+                        "value", 0.0,
+                        "category", nutrient.getCategory(),
+                        "unit", nutrient.getUnit()
+                )));
 
-                // Aggregate the nutrient value
-                aggregatedNutrients.put(nutrientName,
-                        aggregatedNutrients.getOrDefault(nutrientName, 0.0) + nutrientValue);
+                // Increment the aggregated value
+                Map<String, Object> nutrientData = aggregatedNutrients.get(attrId);
+                nutrientData.put("value", (double) nutrientData.get("value") + nutrient.getValue());
             });
         });
 
-        // Convert the aggregated nutrients map into a list of key-value pairs
-        List<Map<String, Object>> aggregatedNutrientList = new ArrayList<>();
-        aggregatedNutrients.forEach((name, value) -> {
-            Map<String, Object> nutrientMap = new HashMap<>();
-            nutrientMap.put("name", name);
-            nutrientMap.put("value", value);
-            aggregatedNutrientList.add(nutrientMap);
-        });
-
-        return aggregatedNutrientList;
+        // Convert aggregated nutrient data into a list
+        return new ArrayList<>(aggregatedNutrients.values());
     }
 
     @Override

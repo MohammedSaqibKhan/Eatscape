@@ -50,6 +50,8 @@ public class NutritionixResponseDTO {
         private int attr_id;
         private String nutrient_name; // Replace attr_id with nutrient_name
         private double value;
+        private String category;
+        private String unit;
     }
 
 

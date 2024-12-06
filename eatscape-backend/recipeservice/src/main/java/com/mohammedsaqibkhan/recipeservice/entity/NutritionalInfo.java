@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -25,41 +27,41 @@ public class NutritionalInfo {
     @Column(name = "recipe_id", nullable = false)
     private Long recipeId;
 
-    @Column(name = "calories")
-    private double calories;
+    @OneToMany(mappedBy = "nutritionalInfo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FullNutrient> fullNutrients;
 
-    @Column(name = "carbs", nullable = false) // Add carbs field
-    private double carbs;
+    @Column(name = "calories")
+    private Double calories;
 
     @Column(name = "total_fat")
-    private double totalFat;
+    private Double totalFat;
 
     @Column(name = "saturated_fat")
-    private double saturatedFat;
+    private Double saturatedFat;
 
     @Column(name = "cholesterol")
-    private double cholesterol;
+    private Double cholesterol;
 
     @Column(name = "sodium")
-    private double sodium;
+    private Double sodium;
 
     @Column(name = "total_carbohydrates")
-    private double totalCarbohydrates;
+    private Double totalCarbohydrates;
 
     @Column(name = "dietary_fiber")
-    private double dietaryFiber;
+    private Double dietaryFiber;
 
     @Column(name = "sugars")
-    private double sugars;
+    private Double sugars;
 
     @Column(name = "protein")
-    private double protein;
+    private Double protein;
 
     @Column(name = "potassium")
-    private double potassium;
+    private Double potassium;
 
     @Column(name = "phosphorus")
-    private double phosphorus;
+    private Double phosphorus;
 
     @Column(name = "food_name")
     private String foodName;
@@ -68,24 +70,22 @@ public class NutritionalInfo {
     private String brandName;
 
     @Column(name = "serving_qty")
-    private double servingQty;
+    private Double servingQty;
 
     @Column(name = "serving_unit")
     private String servingUnit;
 
     @Column(name = "serving_weight_grams")
-    private double servingWeightGrams;
+    private Double servingWeightGrams;
 
     @Column(name = "source")
     private String source;
 
     @Column(name = "is_raw_food")
-    private boolean isRawFood;
+    private Boolean isRawFood;
 
     @Column(name = "ndb_no")
     private String ndbNo;
 
-    @Lob
-    @Column(name = "full_nutrients", columnDefinition = "TEXT")
-    private String fullNutrients; // Serialized JSON or a string representation
+
 }

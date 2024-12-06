@@ -28,7 +28,9 @@ public class NutritionixController {
         String response = nutritionixService.getNutritionalData(ingredients);
         try {
             NutritionixResponseDTO nutritionixResponse = objectMapper.readValue(response, NutritionixResponseDTO.class);
-            return NutritionixResponseProcessor.processResponse(nutritionixResponse);
+            NutritionixResponseProcessor nutritionixResponseProcessor
+                    = new NutritionixResponseProcessor();
+            return nutritionixResponseProcessor.processResponse(nutritionixResponse);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse Nutritionix response: " + e.getMessage());
         }

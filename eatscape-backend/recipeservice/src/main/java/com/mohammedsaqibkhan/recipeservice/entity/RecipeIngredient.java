@@ -2,7 +2,6 @@ package com.mohammedsaqibkhan.recipeservice.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,4 +30,7 @@ public class RecipeIngredient {
     private String category;
     private String quantity;
     private String unit;
+
+
+    private String imageUrl;
 }

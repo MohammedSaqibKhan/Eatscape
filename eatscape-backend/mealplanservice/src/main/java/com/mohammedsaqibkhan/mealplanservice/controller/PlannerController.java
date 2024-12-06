@@ -49,9 +49,9 @@ public class PlannerController {
 
 
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, RecipeDTO>> refreshMealPlan(@RequestParam String date) {
+    public ResponseEntity<Map<String, Object>> refreshMealPlan(@RequestParam String date) {
         LocalDate mealDate = LocalDate.parse(date);
-        Map<String, RecipeDTO> refreshedMealPlan = plannerService.refreshMealPlan(mealDate);
+        Map<String, Object> refreshedMealPlan = plannerService.refreshMealPlan(mealDate);
         return ResponseEntity.ok(refreshedMealPlan);
     }
 }

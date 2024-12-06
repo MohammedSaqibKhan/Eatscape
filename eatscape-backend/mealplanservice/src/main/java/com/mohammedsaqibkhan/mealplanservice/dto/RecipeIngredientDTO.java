@@ -10,5 +10,7 @@ public class RecipeIngredientDTO {
     private String category;
     private String quantity;
     private String unit;
+
+    private String imageUrl;
 }
 
