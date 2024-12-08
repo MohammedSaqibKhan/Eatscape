@@ -104,7 +104,7 @@ public class RecipeServiceImpl implements RecipeService {
 
     private String handleImage(RecipeDTO recipeRequest) {
         String imageUrl = recipeRequest.getImageUrl();
-        String dynamicFileName = recipeRequest.getName().replaceAll("\\s+", "_") + ".jpeg";
+        String dynamicFileName = recipeRequest.getName() + ".jpeg";
 
         Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
         try (InputStream inputStream = resource.getInputStream()) {
@@ -154,8 +154,8 @@ public class RecipeServiceImpl implements RecipeService {
                 // Generate image for the ingredient using Pexels
                 String ingredientName = ingredient.getIngredientName();
                 String imageUrl = "";
-                String dynamicFileName = ingredientName.replaceAll("\\s+", "_") + ".jpeg";
 
+                String dynamicFileName = ingredientName + ".jpeg";
                 Resource resource = new ClassPathResource("static/images/recipes/" + dynamicFileName);
                 try (InputStream inputStream = resource.getInputStream()) {
                     imageUrl = "/images/recipes/" + dynamicFileName;

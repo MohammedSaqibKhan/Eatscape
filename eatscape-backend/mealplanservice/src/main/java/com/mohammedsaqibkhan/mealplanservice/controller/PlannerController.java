@@ -21,9 +21,9 @@ public class PlannerController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<Map<String, RecipeDTO>> generateMealPlan(@RequestParam String date) {
+    public ResponseEntity<Map<String, Object>> generateMealPlan(@RequestParam String date) {
         LocalDate mealDate = LocalDate.parse(date);
-        Map<String, RecipeDTO> mealPlan = plannerService.generateDailyMealPlan(mealDate);
+        Map<String, Object> mealPlan = plannerService.generateDailyMealPlan(mealDate);
         return ResponseEntity.ok(mealPlan);
     }
 
@@ -35,9 +35,9 @@ public class PlannerController {
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, RecipeDTO>> getMealPlan(@RequestParam String date) {
+    public ResponseEntity<Map<String, Object>> getMealPlan(@RequestParam String date) {
         LocalDate mealDate = LocalDate.parse(date);
-        Map<String, RecipeDTO> mealPlan = plannerService.getMealPlan(mealDate);
+        Map<String, Object> mealPlan = plannerService.getMealPlan(mealDate);
         if (mealPlan.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Collections.emptyMap());

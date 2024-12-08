@@ -55,8 +55,6 @@ public class Recipe {
 
     private String imageUrl; // URL for recipe image
 
-    private String videoUrl; // Optional: Video tutorial URL
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private DifficultyLevel difficultyLevel; // EASY, MEDIUM, HARD

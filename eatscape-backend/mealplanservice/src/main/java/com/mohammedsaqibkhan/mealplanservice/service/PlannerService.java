@@ -48,7 +48,7 @@ public class PlannerService {
     }
 
     // Generate a daily meal plan
-    public Map<String, RecipeDTO> generateDailyMealPlan(LocalDate date) {
+    public Map<String, Object> generateDailyMealPlan(LocalDate date) {
         List<String> mealTypes = Arrays.asList("Breakfast", "Lunch", "Dinner");
         Map<String, RecipeDTO> dailyMealPlan = new HashMap<>();
         Random random = new Random();
@@ -60,9 +60,8 @@ public class PlannerService {
                 dailyMealPlan.put(mealType, randomRecipe);
             }
         }
-
-
-        return dailyMealPlan;
+        saveMealPlan(date, dailyMealPlan);
+        return aggregateMealPlanWithNutrients(dailyMealPlan);
     }
 
     // Save a meal plan to the database
@@ -72,8 +71,13 @@ public class PlannerService {
         Map<String, Long> mealPlanData = mealPlan.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getId()));
 
-        // Delete existing meal plan for the date
-        plannerRepository.deleteByDate(date);
+        // Check if a meal plan exists for the date
+        Optional<Planner> existingPlan = plannerRepository.findByDate(date);
+
+        if (existingPlan.isPresent()) {
+            // Delete the existing meal plan
+            plannerRepository.deleteByDate(date);
+        }
 
         // Save the new meal plan
         Planner newMealPlan = Planner.builder()
@@ -85,7 +89,7 @@ public class PlannerService {
     }
 
     // Retrieve a meal plan for a specific date
-    public Map<String, RecipeDTO> getMealPlan(LocalDate date) {
+    public Map<String, Object> getMealPlan(LocalDate date) {
         // Fetch the meal plan from the repository
         Optional<Planner> plannerOptional = plannerRepository.findByDate(date);
 
@@ -97,7 +101,7 @@ public class PlannerService {
         Planner planner = plannerOptional.get();
 
         // Process each meal plan entry to fetch corresponding recipe details
-        return planner.getMealPlan().entrySet().stream()
+        Map<String, RecipeDTO> mealPlan =  planner.getMealPlan().entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> {
@@ -114,34 +118,62 @@ public class PlannerService {
                             }
                         }
                 ));
+        return aggregateMealPlanWithNutrients(mealPlan);
     }
 
 
     // Refresh the meal plan for a specific date
     @Transactional
     public Map<String, Object> refreshMealPlan(LocalDate date) {
-        // Delete the existing meal plan
-        plannerRepository.deleteByDate(date);
+        // Check if a meal plan exists for the date
+        Optional<Planner> existingPlan = plannerRepository.findByDate(date);
+
+        if (existingPlan.isPresent()) {
+            // Delete the existing meal plan
+            plannerRepository.deleteByDate(date);
+        }
 
         // Generate a new daily meal plan
-        Map<String, RecipeDTO> newMealPlan = generateDailyMealPlan(date);
+        List<String> mealTypes = Arrays.asList("Breakfast", "Lunch", "Dinner");
+        Map<String, RecipeDTO> refreshMealPlan = new HashMap<>();
+        Random random = new Random();
+
+        for (String mealType : mealTypes) {
+            List<RecipeDTO> recipes = getRecipesByMealType(mealType);
+            if (!recipes.isEmpty()) {
+                RecipeDTO randomRecipe = recipes.get(random.nextInt(recipes.size()));
+                refreshMealPlan.put(mealType, randomRecipe);
+            }
+        }
 
         // Save the newly generated meal plan
-        saveMealPlan(date, newMealPlan);
+        saveMealPlan(date, refreshMealPlan);
 
+        return aggregateMealPlanWithNutrients(refreshMealPlan);
+
+    }
+
+    public Map<String, Object> aggregateMealPlanWithNutrients(Map<String, RecipeDTO> newMealPlan) {
         // Separate maps for main and full nutrients
         Map<String, Object> response = new HashMap<>();
         Map<String, Double> mainNutrients = new HashMap<>();
-        Map<String, Map<String, Object>> fullNutrients = new HashMap<>();
+        List<Map<String, Object>> fullNutrients = new ArrayList<>();
 
         for (Map.Entry<String, RecipeDTO> entry : newMealPlan.entrySet()) {
             RecipeDTO recipe = entry.getValue();
 
             // Aggregate main nutrients
-            addToTotal(mainNutrients, "calories", recipe.getNutritionalInfo().getCalories());
-            addToTotal(mainNutrients, "protein", recipe.getNutritionalInfo().getProtein());
-            addToTotal(mainNutrients, "fat", recipe.getNutritionalInfo().getTotalFat());
-            addToTotal(mainNutrients, "carbohydrates", recipe.getNutritionalInfo().getTotalCarbohydrates());
+            addToTotal(mainNutrients, "Calories", recipe.getNutritionalInfo().getCalories());
+            addToTotal(mainNutrients, "Protein", recipe.getNutritionalInfo().getProtein());
+            addToTotal(mainNutrients, "Fat", recipe.getNutritionalInfo().getTotalFat());
+            addToTotal(mainNutrients, "Carbs", recipe.getNutritionalInfo().getTotalCarbohydrates());
+            addToTotal(mainNutrients, "Sugars", recipe.getNutritionalInfo().getSugars());
+            addToTotal(mainNutrients, "Sodium", recipe.getNutritionalInfo().getSodium());
+            addToTotal(mainNutrients, "Fiber", recipe.getNutritionalInfo().getDietaryFiber());
+            addToTotal(mainNutrients, "Phosphorous", recipe.getNutritionalInfo().getPhosphorus());
+            addToTotal(mainNutrients, "Saturated Fat", recipe.getNutritionalInfo().getSaturatedFat());
+            addToTotal(mainNutrients, "Potassium", recipe.getNutritionalInfo().getPotassium());
+            addToTotal(mainNutrients, "Cholesterol", recipe.getNutritionalInfo().getCholesterol());
 
             // Aggregate full nutrients from all ingredients
             if (recipe.getNutritionalInfo().getFullNutrients() != null) {
@@ -158,30 +190,38 @@ public class PlannerService {
         return response;
     }
 
+
     // Helper method to add nutrient values to the total
     private void addToTotal(Map<String, Double> nutrients, String nutrientName, Double value) {
         nutrients.put(nutrientName, nutrients.getOrDefault(nutrientName, 0.0) + (value != null ? value : 0.0));
     }
 
     // Helper method to add full nutrient details
-    private void addFullNutrient(Map<String, Map<String, Object>> fullNutrients, FullNutrientDTO nutrient) {
+    private void addFullNutrient(List<Map<String, Object>> fullNutrients, FullNutrientDTO nutrient) {
         String name = nutrient.getNutrientName();
         double value = nutrient.getValue() != 0 ? nutrient.getValue() : 0.0;
         String category = nutrient.getCategory();
         String unit = nutrient.getUnit();
 
-        if (fullNutrients.containsKey(name)) {
-            // Update the value for an existing nutrient
-            Map<String, Object> existingNutrient = fullNutrients.get(name);
+        // Check if the nutrient is already in the list
+        Map<String, Object> existingNutrient = fullNutrients.stream()
+                .filter(n -> n.get("nutrientName").equals(name))
+                .findFirst()
+                .orElse(null);
+
+        if (existingNutrient != null) {
+            // Update the existing nutrient value
             double currentValue = (double) existingNutrient.get("value");
             existingNutrient.put("value", currentValue + value);
         } else {
-            // Add a new nutrient
+            // Add a new nutrient entry
             Map<String, Object> nutrientDetails = new HashMap<>();
-            nutrientDetails.put("value", value);
+            nutrientDetails.put("nutrientName", name);
             nutrientDetails.put("category", category);
             nutrientDetails.put("unit", unit);
-            fullNutrients.put(name, nutrientDetails);
+            nutrientDetails.put("value", value);
+
+            fullNutrients.add(nutrientDetails);
         }
     }
 }

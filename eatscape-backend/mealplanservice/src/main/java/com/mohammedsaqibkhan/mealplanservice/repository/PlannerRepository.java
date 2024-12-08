@@ -10,4 +10,5 @@ public interface PlannerRepository extends JpaRepository<Planner, Long> {
 
     Optional<Planner> findByDate(LocalDate date);
     void deleteByDate(LocalDate date);
+
 }

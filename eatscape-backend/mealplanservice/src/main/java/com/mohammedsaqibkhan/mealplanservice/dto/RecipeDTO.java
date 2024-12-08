@@ -20,7 +20,6 @@ public class RecipeDTO {
     private NutritionalInfoDTO nutritionalInfo;
     private List<RecipeStepDTO> steps;
     private String imageUrl;
-    private String videoUrl;
     private DifficultyLevel difficultyLevel;
     private boolean isFavorite;
     private int views;
