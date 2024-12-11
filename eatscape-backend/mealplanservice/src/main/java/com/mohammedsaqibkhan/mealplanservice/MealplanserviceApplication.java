@@ -2,8 +2,10 @@ package com.mohammedsaqibkhan.mealplanservice;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.PropertySource;
 
 @SpringBootApplication
@@ -23,6 +25,9 @@ public class MealplanserviceApplication {
 		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
 
 
-		SpringApplication.run(MealplanserviceApplication.class, args);
+		ConfigurableApplicationContext context = SpringApplication.run(MealplanserviceApplication.class, args);
+		WebApplicationType webApplicationType = context.getEnvironment().getProperty("spring.main.web-application-type", WebApplicationType.class, WebApplicationType.SERVLET);
+
+		System.out.println("Application type: " + webApplicationType);
 	}
 }

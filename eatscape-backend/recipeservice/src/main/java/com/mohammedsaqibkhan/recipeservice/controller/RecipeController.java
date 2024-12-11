@@ -8,6 +8,7 @@ import com.mohammedsaqibkhan.recipeservice.exception.ResourceNotFoundException;
 import com.mohammedsaqibkhan.recipeservice.repository.RecipeRepository;
 import com.mohammedsaqibkhan.recipeservice.service.RecipeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,6 +54,29 @@ public class RecipeController {
     public ResponseEntity<List<Recipe>> searchRecipes(@RequestParam String query) {
         List<Recipe> recipes = recipeService.searchRecipesByName(query);
         return ResponseEntity.ok(recipes);
+    }
+
+
+    @GetMapping("/advance-dynamic-search")
+    public ResponseEntity<Page<Recipe>> searchRecipesWithFilters(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) List<String> mealTypes,
+            @RequestParam(required = false) List<String> dietTypes,
+            @RequestParam(required = false) Integer minCalories,
+            @RequestParam(required = false) Integer maxCalories,
+            @RequestParam(required = false) Integer minCarbs,
+            @RequestParam(required = false) Integer maxCarbs,
+            @RequestParam(required = false) Integer minProtein,
+            @RequestParam(required = false) Integer maxProtein,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size ) {
+
+        Page<Recipe> recipes = recipeService.searchRecipesWithFilters(
+                query, mealTypes, dietTypes, minCalories, maxCalories, minCarbs,
+                maxCarbs, minProtein,
+                maxProtein, page, size);
+
+        return new ResponseEntity<>(recipes, HttpStatus.OK);
     }
 
 

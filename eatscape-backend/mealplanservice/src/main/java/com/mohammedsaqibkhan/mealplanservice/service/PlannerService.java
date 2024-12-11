@@ -1,15 +1,25 @@
 package com.mohammedsaqibkhan.mealplanservice.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mohammedsaqibkhan.mealplanservice.dto.FullNutrientDTO;
 import com.mohammedsaqibkhan.mealplanservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.mealplanservice.entity.Planner;
 import com.mohammedsaqibkhan.mealplanservice.repository.PlannerRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +38,15 @@ public class PlannerService {
     public void init() {
         // Log the injected value here
         System.out.println("Recipe Service URL after injection: " + recipeServiceUrl);
-        this.webClient = WebClient.builder().baseUrl(recipeServiceUrl).build();
+        HttpClient httpClient = HttpClient.create()
+                .responseTimeout(Duration.ofSeconds(30))  // Optional: Adjust timeout if needed
+                .wiretap(true);
+
+        this.webClient = WebClient.builder()
+                .baseUrl(recipeServiceUrl)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize( 5 * 1024 * 1024))
+                .build();
     }
 
     // Constructor (no need to print the recipeServiceUrl here anymore)
@@ -61,7 +79,13 @@ public class PlannerService {
             }
         }
         saveMealPlan(date, dailyMealPlan);
-        return aggregateMealPlanWithNutrients(dailyMealPlan);
+        Map<String, Object> aggregatedNutrients =  aggregateMealPlanWithNutrients(dailyMealPlan);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("dailyMealPlan", dailyMealPlan);
+        result.put("aggregatedNutrients", aggregatedNutrients);
+
+        return result;
     }
 
     // Save a meal plan to the database
@@ -149,8 +173,13 @@ public class PlannerService {
         // Save the newly generated meal plan
         saveMealPlan(date, refreshMealPlan);
 
-        return aggregateMealPlanWithNutrients(refreshMealPlan);
+        Map<String, Object> aggregatedNutrients = aggregateMealPlanWithNutrients(refreshMealPlan);
+        Map<String, Object> result = new HashMap<>();
 
+        result.put("refreshMealPlan", refreshMealPlan);
+        result.put("aggregatedNutrients", aggregatedNutrients);
+
+        return result;
     }
 
     public Map<String, Object> aggregateMealPlanWithNutrients(Map<String, RecipeDTO> newMealPlan) {
@@ -222,6 +251,54 @@ public class PlannerService {
             nutrientDetails.put("value", value);
 
             fullNutrients.add(nutrientDetails);
+        }
+    }
+
+
+
+
+
+    public Page<RecipeDTO> searchRecipesWithFilters(
+            String query, List<String> mealTypes, List<String> dietTypes,
+            Integer minCalories, Integer maxCalories, Integer minCarbs, Integer maxCarbs,
+            Integer minProtein, Integer maxProtein, int page, int size) {
+
+        // Build the URL with query parameters
+        String url = UriComponentsBuilder.fromUriString(recipeServiceUrl + "/recipes/advance-dynamic-search")
+                .queryParam("query", query)
+                .queryParam("mealTypes", mealTypes)
+                .queryParam("dietTypes", dietTypes)
+                .queryParam("minCalories", minCalories)
+                .queryParam("maxCalories", maxCalories)
+                .queryParam("minCarbs", minCarbs)
+                .queryParam("maxCarbs", maxCarbs)
+                .queryParam("minProtein", minProtein)
+                .queryParam("maxProtein", maxProtein)
+                .queryParam("page", page)
+                .queryParam("size", size)
+                .toUriString();
+
+        // Make the WebClient call and retrieve the response as a string
+        String jsonResponse = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());  // Register the JavaTimeModule
+
+        // Deserialize the response into a map
+        try {
+            Map<String, Object> responseMap = objectMapper.readValue(jsonResponse, new TypeReference<>() {});
+            List<RecipeDTO> content = objectMapper.convertValue(responseMap.get("content"), new TypeReference<List<RecipeDTO>>() {});
+            long totalElements = ((Number) responseMap.get("totalElements")).longValue();
+            int totalPages = ((Number) responseMap.get("totalPages")).intValue();
+
+            // Return the PageImpl manually
+            return new PageImpl<>(content, PageRequest.of(page, size), totalElements);
+        } catch (Exception e) {
+            throw new RuntimeException("Error deserializing response", e);
         }
     }
 }

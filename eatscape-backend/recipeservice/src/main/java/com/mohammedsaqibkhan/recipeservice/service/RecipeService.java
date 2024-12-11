@@ -3,6 +3,7 @@ package com.mohammedsaqibkhan.recipeservice.service;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.recipeservice.dto.RecipeStatsDTO;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -45,5 +46,9 @@ public interface RecipeService {
     Map<String, Recipe> generateDailyMealPlan(LocalDate date);
 
 
-
+    Page<Recipe> searchRecipesWithFilters(
+            String query, List<String> mealTypes, List<String> dietTypes,
+            Integer minCalories, Integer maxCalories, Integer minCarbs,
+            Integer maxCarbs, Integer minProtein,
+            Integer maxProtein, int page, int size);
 }

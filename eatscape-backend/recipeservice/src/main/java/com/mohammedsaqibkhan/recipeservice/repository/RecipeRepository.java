@@ -3,6 +3,7 @@ package com.mohammedsaqibkhan.recipeservice.repository;
 import com.mohammedsaqibkhan.recipeservice.entity.DietType;
 import com.mohammedsaqibkhan.recipeservice.entity.Recipe;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface RecipeRepository extends JpaRepository<Recipe, Long> {
+public interface RecipeRepository extends JpaRepository<Recipe, Long>, JpaSpecificationExecutor<Recipe> {
 
     // Custom query to find recipes by name or tags
     List<Recipe> findByNameContaining(String name);
@@ -64,4 +65,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     // Fetch all active recipes for a specific meal type
     @Query("SELECT r FROM Recipe r WHERE r.mealType.name = :mealType AND r.isDeleted = false")
     List<Recipe> findByMealType(@Param("mealType") String mealType);
+
+
+
 }

@@ -12,6 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -499,6 +503,24 @@ public class RecipeServiceImpl implements RecipeService {
         }
 
         return dailyMealPlan;
+    }
+
+    @Override
+    public Page<Recipe> searchRecipesWithFilters(String query, List<String> mealTypes,
+                                                 List<String> dietTypes,
+                                                 Integer minCalories,
+                                                 Integer maxCalories,
+                                                 Integer minCarbs,
+                                                 Integer maxCarbs,
+                                                 Integer minProtein,
+                                                 Integer maxProtein, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Specification<Recipe> spec = RecipeSpecifications.withFilters(
+                query, mealTypes, dietTypes, minCalories, maxCalories,
+                minCarbs, maxCarbs, minProtein, maxProtein
+        );
+        return recipeRepository.findAll(spec, pageable);
     }
 
 

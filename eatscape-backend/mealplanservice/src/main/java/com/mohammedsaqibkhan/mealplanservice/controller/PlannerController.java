@@ -2,12 +2,14 @@ package com.mohammedsaqibkhan.mealplanservice.controller;
 
 import com.mohammedsaqibkhan.mealplanservice.dto.RecipeDTO;
 import com.mohammedsaqibkhan.mealplanservice.service.PlannerService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -53,6 +55,29 @@ public class PlannerController {
         LocalDate mealDate = LocalDate.parse(date);
         Map<String, Object> refreshedMealPlan = plannerService.refreshMealPlan(mealDate);
         return ResponseEntity.ok(refreshedMealPlan);
+    }
+
+
+
+    @GetMapping("/recipes")
+    public ResponseEntity<Page<RecipeDTO>> searchRecipes(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) List<String> mealTypes,
+            @RequestParam(required = false) List<String> dietTypes,
+            @RequestParam(required = false) Integer minCalories,
+            @RequestParam(required = false) Integer maxCalories,
+            @RequestParam(required = false) Integer minCarbs,
+            @RequestParam(required = false) Integer maxCarbs,
+            @RequestParam(required = false) Integer minProtein,
+            @RequestParam(required = false) Integer maxProtein,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Page<RecipeDTO> recipes = plannerService.searchRecipesWithFilters(
+                query, mealTypes, dietTypes, minCalories, maxCalories,
+                minCarbs, maxCarbs, minProtein, maxProtein, page, size);
+
+        return ResponseEntity.ok(recipes);
     }
 }
 

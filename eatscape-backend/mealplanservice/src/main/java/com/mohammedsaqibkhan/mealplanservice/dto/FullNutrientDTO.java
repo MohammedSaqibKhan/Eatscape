@@ -5,7 +5,6 @@ import lombok.Data;
 @Data
 public class FullNutrientDTO {
     private Long id;
-    private NutritionalInfoDTO nutritionalInfo;
 
     private int attrId;
 
