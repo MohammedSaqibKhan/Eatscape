@@ -26,7 +26,7 @@ public class SecurityConfig {
         http.cors().and().csrf().disable()
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/mealplans/**", "/mealplanentries/**",
-                                "/random/**", "/overview/**", "/meal-plans/**").permitAll() // Public endpoints, if any
+                                "/random/**", "/overview/**", "/meal-plans/**", "/logs/**", "/api/meal-plan/**").permitAll() // Public endpoints, if any
                         .anyRequest().authenticated()
                 )
                 .sessionManagement()
