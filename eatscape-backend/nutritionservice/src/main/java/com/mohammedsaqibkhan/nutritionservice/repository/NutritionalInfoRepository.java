@@ -1,4 +1,4 @@
 package com.mohammedsaqibkhan.nutritionservice.repository;
 
-public class MealLogRepository {
+public class NutritionalInfoRepository {
 }
